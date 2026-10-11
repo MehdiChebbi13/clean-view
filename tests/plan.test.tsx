@@ -1,6 +1,9 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
-import { actionLabel, addTask, bar, currentIndex, fromTodoWrite, isAllDone, progress, updateTask, windowAround } from '../hooks/plan'
+import {
+  EMPTY, actionLabel, addTask, bar, barColors, currentIndex, duration, fromTodoWrite, isAllDone, mix,
+  progress, shimmerColors, stepLabel, svgBar, updateTask, windowAround,
+} from '../hooks/plan'
 
 const TODOS = [
   { content: 'Read the notebooks', status: 'completed' as const, activeForm: 'Reading the notebooks' },
@@ -37,6 +40,21 @@ test('long lists keep a window around the current step; actions are labelled', (
   expect(actionLabel('mcp__github__create_issue')).toBe('Using create_issue')
 })
 
+test('timer text, step labels and bar colours', () => {
+  expect(duration(7_000)).toBe('7s')
+  expect(duration(107_000)).toBe('1m 47s')
+
+  const plan = fromTodoWrite([...TODOS, { content: 'Publish', status: 'pending', activeForm: 'Publishing' }])
+  expect(plan.map((_, i) => stepLabel(plan, i, false))).toEqual(['Done', 'Working', 'Next', 'Up next'])
+  expect(stepLabel(plan, 1, true)).toBe('Waiting')
+
+  expect(mix(0x000000, 0xffffff, 0.5)).toBe(0x808080)
+  const half = barColors(4, 0.5, 0xff0000, 0x00ff00)
+  expect(half).toEqual([0xff0000, mix(0xff0000, 0x00ff00, 1 / 3), EMPTY, EMPTY])
+  expect(shimmerColors(14, 3, 0xff4fa3).filter(c => c !== EMPTY).length).toBe(4) // head at cell 3, tail behind
+  expect(svgBar([0xff0000]).includes('fill="#ff0000"')).toBe(true)
+})
+
 const BAND = {
   component: 'AbovePrompt' as const,
   props: { hasSurvey: false, isWorking: true, maxRows: 12, bodyColumns: 80, scroll: { offset: 0, bodyRows: 11 }, view: {} },
@@ -47,6 +65,7 @@ const ROW = {
 }
 
 test('the band shows the plan and the tool rows are hidden', async ($, on) => {
+  mock.clock(on)
   on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', () => ({ result: {} }) as never)
 
@@ -54,9 +73,12 @@ test('the band shows the plan and the tool rows are hidden', async ($, on) => {
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const band = await $.ui.mount({ plugin: 'clean-view', surface, ...BAND })
-    expect(await band.find({ text: /step 2 of 3/ })).toBeDefined()
-    expect(await band.find({ text: /Writing chapter 3/ })).toBeDefined()
-    expect(await band.find({ text: /33%/ })).toBeDefined()
+    expect(await band.find({ text: /Step 2 of 3/ })).toBeDefined()
+    expect(await band.find({ text: /Write chapter 3/ })).toBeDefined()
+    expect(await band.find({ text: /^33%$/ })).toBeDefined()
+    expect(await band.find({ text: /^Working$/ })).toBeDefined()
+    expect(await band.find({ text: /^Next$/ })).toBeDefined()
+    expect(await band.find({ type: surface === 'terminal' ? 'Raster' : 'Svg' })).toBeDefined()
     await band.unmount()
 
     const row = await $.ui.mount({ plugin: 'clean-view', surface, ...ROW })
