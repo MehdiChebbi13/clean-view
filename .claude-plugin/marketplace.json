@@ -1,0 +1,6 @@
+{
+  "name": "clean-view",
+  "description": "Clean View: a calm plan / progress / status panel instead of tool-call noise in Claude Code",
+  "owner": { "name": "Mehdi Chebbi" },
+  "plugins": [{ "name": "clean-view", "source": "./" }]
+}

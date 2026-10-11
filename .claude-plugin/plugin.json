@@ -1,0 +1,9 @@
+{
+  "name": "clean-view",
+  "version": "0.1.0",
+  "description": "Hide tool calls and output; show Claude's plan, current step, progress and status above the prompt",
+  "author": { "name": "Mehdi Chebbi" },
+  "repository": "https://github.com/MehdiChebbi13/clean-view",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
